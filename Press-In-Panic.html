@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#050505">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>NEON: MOBILE ARCHITECT</title>
+    <style>
+        /* --- STATIC STYLING --- */
+        :root {
+            --bg: #050505;
+            --primary: #00f3ff;
+            --secondary: #ff00ff;
+            --danger: #ff3131;
+            --gold: #ffd700;
+            --glass: rgba(10, 10, 10, 0.9);
+            --font: 'Courier New', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: #fff;
+            font-family: var(--font);
+            height: 100dvh;
+            /* Dynamic Height for Mobile Browsers */
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+            touch-action: none;
+            /* Prevents scroll/zoom completely */
+        }
+
+        /* Background */
+        .bg {
+            position: fixed;
+            inset: -50%;
+            width: 200%;
+            height: 200%;
+            background-image:
+                linear-gradient(transparent 90%, rgba(0, 243, 255, 0.05) 90%),
+                linear-gradient(90deg, transparent 90%, rgba(0, 243, 255, 0.05) 90%);
+            background-size: 50px 50px;
+            transform: perspective(500px) rotateX(60deg);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        #fx {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        /* Main Layout */
+        main {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            place-items: center;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        section {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        section.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* --- LANDING PAGE --- */
+        #s-land h1 {
+            font-size: clamp(2.5rem, 10vw, 4rem);
+            /* Fluid Text */
+            line-height: 1;
+            text-align: center;
+            margin: 0 0 10px 0;
+            text-shadow: 3px 3px var(--secondary);
+        }
+
+        #s-land p {
+            color: var(--secondary);
+            letter-spacing: 2px;
+            text-align: center;
+            font-size: clamp(0.8rem, 3vw, 1rem);
+        }
+
+        /* --- GAME HUD --- */
+        /* Flex container for Landscape support */
+        .game-container {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            height: 100%;
+            justify-content: center;
+        }
+
+        header {
+            width: 100%;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 800;
+            font-size: clamp(1rem, 4vw, 1.2rem);
+            margin-bottom: 5px;
+        }
+
+        .bar {
+            width: 100%;
+            height: clamp(6px, 1.5vh, 10px);
+            background: #222;
+            margin: 5px 0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .fill {
+            height: 100%;
+            width: 0%;
+            display: block;
+        }
+
+        #timer-fill {
+            background: var(--primary);
+        }
+
+        #combo-fill {
+            background: var(--gold);
+        }
+
+        .prompt {
+            background: var(--glass);
+            border: 1px solid var(--primary);
+            padding: 10px;
+            width: 100%;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.1);
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .prompt h2 {
+            margin: 0;
+            font-size: clamp(1.8rem, 6vw, 2.5rem);
+            text-shadow: 2px 2px 0 #000;
+            line-height: 1.1;
+        }
+
+        /* --- GRID --- */
+        #grid {
+            display: grid;
+            gap: clamp(8px, 2vmin, 15px);
+            width: 100%;
+            aspect-ratio: 1;
+            /* Ensure grid doesn't overflow vertically on small screens */
+            max-height: 55vh;
+            max-width: 55vh;
+            margin: 0 auto;
+        }
+
+        .tile {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(2rem, 8vmin, 3rem);
+            /* Responsive Icons */
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tile:active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .tile.glitch {
+            border-color: var(--secondary);
+            color: var(--secondary);
+        }
+
+        .tile.glitch::after {
+            content: '💀';
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: grid;
+            place-items: center;
+        }
+
+        /* --- POWER UPS --- */
+        .power-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            margin-top: 10px;
+            min-height: 50px;
+        }
+
+        .powerup {
+            flex: 1;
+            padding: 0 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #fff;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: clamp(0.7rem, 2.5vw, 0.9rem);
+        }
+
+        .powerup:disabled {
+            opacity: 0.3;
+        }
+
+        .p-freeze {
+            border-color: #00ff41;
+            color: #00ff41;
+        }
+
+        .p-nuke {
+            border-color: #ff3131;
+            color: #ff3131;
+        }
+
+        /* --- BUTTONS --- */
+        .btn {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 15px 30px;
+            font-family: inherit;
+            font-size: 1.2rem;
+            font-weight: 900;
+            cursor: pointer;
+            margin-top: 15px;
+            text-transform: uppercase;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .btn:hover {
+            background: var(--primary);
+            color: #000;
+        }
+
+        .btn-daily {
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+
+        .btn-daily:hover {
+            background: var(--gold);
+        }
+
+        /* --- BOSS MODAL --- */
+        .boss-modal {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 50;
+            display: grid;
+            place-items: center;
+            visibility: hidden;
+            opacity: 0;
+            padding: 20px;
+        }
+
+        .boss-modal.active {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .boss-orb {
+            width: clamp(150px, 40vw, 250px);
+            height: clamp(150px, 40vw, 250px);
+            border-radius: 50%;
+            background: var(--danger);
+            border: 5px solid #fff;
+            display: grid;
+            place-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #leaderboard {
+            margin-top: 20px;
+            text-align: left;
+            font-size: 0.9rem;
+            color: #aaa;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .rank-badge {
+            position: absolute;
+            top: max(10px, env(safe-area-inset-top));
+            left: max(10px, env(safe-area-inset-left));
+            background: #222;
+            padding: 5px 10px;
+            border: 1px solid #444;
+            font-size: 0.8rem;
+            z-index: 90;
+        }
+
+        #mute {
+            top: max(10px, env(safe-area-inset-top));
+            right: max(10px, env(safe-area-inset-right));
+        }
+
+        /* --- MOBILE LANDSCAPE OPTIMIZATION --- */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .game-container {
+                flex-direction: row;
+                max-width: 100%;
+                align-items: center;
+                padding: 0 20px;
+            }
+
+            .hud-column {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                max-width: 300px;
+            }
+
+            #grid {
+                height: 80vh;
+                max-height: 80vh;
+                width: 80vh;
+                max-width: 80vh;
+                margin: 0 20px;
+            }
+
+            .power-row {
+                margin-top: 5px;
+            }
+
+            .prompt {
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="bg" id="bg-layer"></div>
+    <canvas id="fx"></canvas>
+
+    <div class="rank-badge" id="rank-badge">RANK: NOVICE</div>
+    <button id="mute"
+        style="position:absolute; background:none; border:1px solid #555; color:#555; padding:5px; z-index:100; cursor:pointer;">AUDIO</button>
+
+    <main id="main-container">
+        <!-- LANDING -->
+        <section id="s-land" class="active">
+            <h1 style="">NEON<br>MOBILE</h1>
+            <p>REFLEX // LOGIC // CHAOS</p>
+            <button class="btn" id="btn-start-normal">QUICK PLAY</button>
+            <button class="btn btn-daily" id="btn-start-daily">DAILY CHALLENGE</button>
+            <div id="leaderboard"><u>LOCAL DATABASE</u><br>
+                <div id="lb-list"></div>
+            </div>
+        </section>
+
+        <!-- GAME -->
+        <section id="s-game">
+            <div class="game-container">
+                <!-- Wrapper for Landscape Layout -->
+                <div class="hud-column">
+                    <header>
+                        <div class="row">
+                            <span>LVL <span id="ui-lvl">1</span></span>
+                            <span>SCORE <span id="ui-score">0</span></span>
+                        </div>
+                        <div class="bar" id="combo">
+                            <div class="fill" id="combo-fill"></div>
+                        </div>
+                        <div class="bar" id="timer">
+                            <div class="fill" id="timer-fill"></div>
+                        </div>
+                    </header>
+
+                    <div class="prompt">
+                        <small id="p-act" style="color:#aaa; display:block; margin-bottom:5px;">CMD</small>
+                        <h2 id="p-txt">READY</h2>
+                    </div>
+                </div>
+
+                <div id="grid"></div>
+
+                <div class="hud-column">
+                    <div class="power-row">
+                        <button id="btn-freeze" class="powerup p-freeze"><span>❄️ FREEZE</span><span
+                                id="qty-freeze">1</span></button>
+                        <button id="btn-nuke" class="powerup p-nuke"><span>☢️ NUKE</span><span
+                                id="qty-nuke">1</span></button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- GAME OVER -->
+        <section id="s-over">
+            <h1 style="color:var(--danger); font-size:3rem; margin:0;">TERMINATED</h1>
+            <p style="font-size:1.5rem;">SCORE: <span id="end-score">0</span></p>
+            <div id="daily-msg" style="color:var(--gold); display:none; margin-bottom:10px; font-weight:bold;">⚠️ DAILY
+                RUN COMPLETE ⚠️</div>
+            <button class="btn" id="btn-retry">RETRY</button>
+            <button class="btn" id="btn-exit" style="border-color:#555; color:#aaa;">EXIT</button>
+        </section>
+    </main>
+
+    <!-- BOSS -->
+    <div id="boss" class="boss-modal">
+        <div style="text-align:center; width:100%;">
+            <h2 style="color:var(--danger); font-size: clamp(1.5rem, 5vw, 2.5rem); margin-bottom:20px;">FIREWALL
+                DETECTED</h2>
+            <div style="display:flex; justify-content:center;">
+                <div id="boss-orb" class="boss-orb">TAP</div>
+            </div>
+            <div class="bar" style="width:min(300px, 80vw); margin:20px auto; background:#333;">
+                <div class="fill" id="boss-hp-fill" style="width:100%; background:var(--danger);"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /** CONFIG */
+        const C = {
+            TIME: 12000, MAX_TIME: 15000, COOLDOWN: 500, MAX_DIFF: 30,
+            PALETTE: { p: '#00f3ff', s: '#00ff41', d: '#ff3131', g: '#ffd700' },
+            ITEMS: [
+                { n: 'FLOPPY', v: '💾' }, { n: 'JOYSTICK', v: '🕹️' }, { n: 'VHS', v: '📼' }, { n: 'BATTERY', v: '🔋' },
+                { n: 'FIRE', v: '🔥' }, { n: 'WATER', v: '💧' }, { n: 'BOLT', v: '⚡' }, { n: 'ICE', v: '❄️' },
+                { n: 'ROCK', v: '✊' }, { n: 'PAPER', v: '✋' }, { n: 'SCISSORS', v: '✌️' },
+                { n: 'UP', v: '⬆️' }, { n: 'DOWN', v: '⬇️' }, { n: 'LEFT', v: '⬅️' }, { n: 'RIGHT', v: '➡️' }
+            ]
+        };
+
+        /** SEEDED RNG */
+        const RNG = {
+            seed: 1,
+            setSeed(str) {
+                let h = 0xdeadbeef;
+                for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 2654435761);
+                this.seed = ((h ^ h >>> 16) >>> 0);
+            },
+            next() {
+                this.seed = (Math.imul(1664525, this.seed) + 1013904223) | 0;
+                return ((this.seed >>> 0) / 4294967296);
+            }
+        };
+
+        /** AUDIO */
+        const Audio = {
+            ctx: null, bus: {}, muted: false,
+            init() {
+                if (this.ctx) return;
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.bus.m = this.ctx.createGain();
+                this.bus.m.connect(this.ctx.destination);
+                this.muted = localStorage.getItem('mute') === '1';
+                this.sync();
+            },
+            toggle() {
+                this.muted = !this.muted;
+                localStorage.setItem('mute', this.muted ? '1' : '0');
+                this.sync();
+            },
+            sync() {
+                if (this.ctx) {
+                    this.bus.m.gain.setTargetAtTime(this.muted ? 0 : 0.3, this.ctx.currentTime, 0.1);
+                    if (this.ctx.state === 'suspended') this.ctx.resume();
+                }
+                const btn = document.getElementById('mute');
+                btn.style.borderColor = this.muted ? '#555' : '#00f3ff';
+                btn.style.color = this.muted ? '#555' : '#00f3ff';
+            },
+            play(f, t, d, vol = 0.1) {
+                if (!this.ctx) return;
+                const o = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                o.type = t; o.frequency.value = f;
+                o.connect(g); g.connect(this.bus.m);
+                o.start();
+                g.gain.setValueAtTime(vol, this.ctx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + d);
+                o.stop(this.ctx.currentTime + d);
+            },
+            beat(step, combo) {
+                if (this.muted) return;
+                if (step % 4 === 0) this.play(100, 'sine', 0.1, 0.5);
+                if (combo > 20 && step % 2 === 0) this.play(50, 'sawtooth', 0.1, 0.2);
+                if (combo > 50 && step % 4 === 2) this.play(800, 'triangle', 0.05, 0.1);
+            }
+        };
+
+        /** RENDERER & FX */
+        const Render = {
+            c: null, ctx: null, width: 0, height: 0,
+            particles: [], text: [], pool: [],
+            shake: 0, zoom: 1, bgY: 0, bossPulse: 1, bossPulseDir: 0.01,
+
+            init() {
+                this.c = document.getElementById('fx');
+                this.ctx = this.c.getContext('2d');
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+            },
+
+            resize() {
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.c.width = this.width;
+                this.c.height = this.height;
+            },
+
+            spawn(x, y, color) {
+                for (let i = 0; i < 10; i++) {
+                    const p = this.pool.pop() || {};
+                    p.x = x; p.y = y; p.c = color; p.l = 1; p.s = Math.random() * 5 + 2;
+                    const a = Math.random() * 6.28; const v = Math.random() * 6 + 2;
+                    p.vx = Math.cos(a) * v; p.vy = Math.sin(a) * v;
+                    this.particles.push(p);
+                }
+            },
+
+            spawnText(x, y, str) { this.text.push({ x, y, str, l: 1, vy: 2 }); },
+            triggerShake(amount) { this.shake = amount; },
+
+            loop(dt, gameActive, combo, isBoss) {
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                this.bgY = (this.bgY + (0.5 * dt)) % 50;
+                document.getElementById('bg-layer').style.transform = `perspective(500px) rotateX(60deg) translateY(${this.bgY}px)`;
+
+                let tx = 0, ty = 0;
+                if (this.shake > 0) {
+                    tx = (Math.random() - 0.5) * this.shake;
+                    ty = (Math.random() - 0.5) * this.shake;
+                    this.shake *= 0.9;
+                    if (this.shake < 0.5) this.shake = 0;
+                }
+
+                const targetZoom = 1 + Math.min(combo * 0.002, 0.1);
+                this.zoom += (targetZoom - this.zoom) * 0.1;
+                document.getElementById('main-container').style.transform = `translate(${tx}px, ${ty}px) scale(${this.zoom})`;
+
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    let p = this.particles[i];
+                    p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.l -= 0.02;
+                    this.ctx.globalAlpha = p.l; this.ctx.fillStyle = p.c;
+                    this.ctx.beginPath(); this.ctx.arc(p.x, p.y, p.s, 0, 6.28); this.ctx.fill();
+                    if (p.l <= 0) { this.particles.splice(i, 1); if (this.pool.length < 100) this.pool.push(p); }
+                }
+
+                this.ctx.font = "bold 24px Courier New"; this.ctx.textAlign = "center";
+                for (let i = this.text.length - 1; i >= 0; i--) {
+                    let t = this.text[i];
+                    t.y -= t.vy; t.l -= 0.02;
+                    this.ctx.globalAlpha = t.l; this.ctx.fillStyle = "#fff";
+                    this.ctx.fillText(t.str, t.x, t.y);
+                    if (t.l <= 0) this.text.splice(i, 1);
+                }
+                this.ctx.globalAlpha = 1;
+
+                if (isBoss) {
+                    this.bossPulse += this.bossPulseDir;
+                    if (this.bossPulse > 1.1 || this.bossPulse < 0.9) this.bossPulseDir *= -1;
+                    document.getElementById('boss-orb').style.transform = `scale(${this.bossPulse})`;
+                }
+            }
+        };
+
+        /** GAME ENGINE */
+        const Game = {
+            state: {}, lb: JSON.parse(localStorage.getItem('lb') || '[]'),
+
+            init() {
+                Render.init(); Audio.init(); this.updateLB(); UI.init();
+
+                document.getElementById('btn-start-normal').onclick = () => this.start('NORMAL');
+                document.getElementById('btn-start-daily').onclick = () => this.start('DAILY');
+                document.getElementById('btn-retry').onclick = () => this.start('NORMAL');
+                document.getElementById('btn-exit').onclick = () => UI.show('s-land');
+
+                const grid = document.getElementById('grid');
+                grid.onmousedown = (e) => this.input(e.target, e.clientX, e.clientY);
+                grid.ontouchstart = (e) => { e.preventDefault(); this.input(e.target, e.touches[0].clientX, e.touches[0].clientY); };
+
+                const boss = document.getElementById('boss-orb');
+                const hitBoss = (e) => { e.preventDefault(); this.hitBoss(e.touches ? e.touches[0].clientX : e.clientX, e.touches ? e.touches[0].clientY : e.clientY); };
+                boss.onmousedown = hitBoss; boss.ontouchstart = hitBoss;
+
+                document.getElementById('btn-freeze').onclick = () => this.usePowerup('freeze');
+                document.getElementById('btn-nuke').onclick = () => this.usePowerup('nuke');
+                document.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space') this.usePowerup('freeze');
+                    if (e.code === 'KeyN') this.usePowerup('nuke');
+                });
+
+                document.getElementById('mute').onclick = () => Audio.toggle();
+
+                let step = 0;
+                setInterval(() => { if (this.state.active) { Audio.beat(step, this.state.combo); step = (step + 1) % 16; } }, 125);
+
+                this.loop(performance.now());
+            },
+
+            random() { return this.state.mode === 'DAILY' ? RNG.next() : Math.random(); },
+
+            start(mode = 'NORMAL') {
+                Audio.sync();
+                if (mode === 'DAILY') RNG.setSeed(new Date().toISOString().slice(0, 10));
+
+                this.state = {
+                    score: 0, lvl: 1, time: C.TIME, combo: 0,
+                    active: true, boss: false, bhp: 10, mode: mode,
+                    freeze: false, q_freeze: 1, q_nuke: 1, lastHit: 0
+                };
+
+                UI.show('s-game');
+                document.getElementById('daily-msg').style.display = mode === 'DAILY' ? 'block' : 'none';
+
+                this.renderPowerups();
+                this.round();
+            },
+
+            loop(now) {
+                requestAnimationFrame((t) => this.loop(t));
+                const dt = Math.min(now - (this.lastTime || now), 100);
+                this.lastTime = now;
+
+                Render.loop(dt / 16, this.state.active, this.state.combo, this.state.boss);
+
+                if (!this.state.active) return;
+
+                if (!this.state.freeze && !this.state.boss) {
+                    const cap = Math.min(this.state.lvl, C.MAX_DIFF);
+                    this.state.time -= (0.015 + (cap * 0.002)) * dt;
+                }
+
+                if (this.state.freeze && now > this.state.freezeEnd) {
+                    this.state.freeze = false;
+                    document.body.style.filter = 'none';
+                }
+
+                UI.bars(this.state.time, this.state.combo, this.state.bhp);
+                if (this.state.time <= 0) this.over();
+            },
+
+            round() {
+                if (this.state.score > 0 && this.state.score % 10 === 0 && !this.state.boss) return this.startBoss();
+
+                const g = document.getElementById('grid'); g.innerHTML = '';
+                const cols = this.state.lvl < 3 ? 2 : 3;
+                g.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+                const pool = C.ITEMS;
+                const tiles = Array.from({ length: cols * cols }, () => pool[Math.floor(this.random() * pool.length)]);
+                const target = tiles[Math.floor(this.random() * tiles.length)];
+                const avoid = this.state.lvl > 2 && this.random() > 0.7;
+
+                if (avoid && tiles.every(t => t.n === target.n)) tiles[0] = pool.find(i => i.n !== target.n);
+                if (!avoid && !tiles.some(t => t.n === target.n)) tiles[0] = target;
+
+                if (this.state.lvl > 5 && this.random() > 0.8) {
+                    let validIndices = [];
+                    tiles.forEach((t, i) => {
+                        const safeCount = tiles.filter(x => x.n !== target.n).length;
+                        if (avoid) { if (t.n !== target.n && safeCount > 1) validIndices.push(i); }
+                        else { if (t.n !== target.n) validIndices.push(i); }
+                    });
+                    if (validIndices.length > 0) tiles[validIndices[Math.floor(this.random() * validIndices.length)]] = { ...tiles[validIndices[0]], isGlitch: true };
+                }
+
+                this.state.data = { t: target, a: avoid };
+
+                document.getElementById('p-act').innerText = avoid ? "DO NOT PRESS" : "PRESS";
+                document.getElementById('p-txt').innerHTML = `<span style="color:${avoid ? C.PALETTE.d : C.PALETTE.p}">${target.n}</span>`;
+
+                tiles.forEach(t => {
+                    const el = document.createElement('div');
+                    el.className = 'tile' + (t.isGlitch ? ' glitch' : '');
+                    el.innerText = t.v; el.dataset.n = t.n; if (t.isGlitch) el.dataset.glitch = '1';
+                    g.appendChild(el);
+                });
+            },
+
+            input(el, x, y) {
+                if (!this.state.active || this.state.boss || !el.classList.contains('tile')) return;
+                if (performance.now() - this.state.lastHit < C.COOLDOWN) return;
+
+                if (el.dataset.glitch === '1') return this.damage(x, y);
+
+                const correct = this.state.data.a ? el.dataset.n !== this.state.data.t.n : el.dataset.n === this.state.data.t.n;
+
+                if (correct) {
+                    this.state.score++;
+                    this.state.time = Math.min(this.state.time + 1000, C.MAX_TIME);
+                    this.state.combo = Math.min(this.state.combo + 5, 100);
+                    this.state.lvl = 1 + Math.floor(this.state.score / 10);
+
+                    Audio.play(600 + (this.state.combo * 4), 'sine', 0.1);
+                    Render.spawn(x, y, C.PALETTE.s);
+
+                    if (this.state.combo % 20 === 0) Render.spawnText(x, y - 50, ["GOOD", "GREAT", "SUPER", "ULTRA"][Math.min(3, Math.floor(this.state.combo / 20) - 1)]);
+
+                    UI.update();
+                    this.round();
+                } else {
+                    this.damage(x, y);
+                }
+            },
+
+            damage(x, y) {
+                this.state.lastHit = performance.now();
+                this.state.time -= 3000;
+                this.state.combo = 0;
+                Audio.play(100, 'sawtooth', 0.3);
+                Render.spawn(x, y, C.PALETTE.d);
+                Render.triggerShake(20);
+                UI.bars(this.state.time, 0, 0);
+            },
+
+            usePowerup(type) {
+                if (!this.state.active || this.state.boss) return;
+
+                if (type === 'freeze' && this.state.q_freeze > 0) {
+                    this.state.q_freeze--;
+                    this.state.freeze = true;
+                    this.state.freezeEnd = performance.now() + 3000;
+                    document.body.style.filter = 'hue-rotate(180deg)';
+                    Audio.play(400, 'square', 0.5);
+                }
+
+                if (type === 'nuke' && this.state.q_nuke > 0) {
+                    this.state.q_nuke--;
+                    Render.spawn(window.innerWidth / 2, window.innerHeight / 2, C.PALETTE.g);
+                    Audio.play(100, 'sawtooth', 0.6);
+                    this.state.score += 3;
+                    this.state.time = Math.min(this.state.time + 1000, C.MAX_TIME);
+                    this.round();
+                    UI.update();
+                }
+                this.renderPowerups();
+            },
+
+            renderPowerups() {
+                document.getElementById('btn-freeze').disabled = this.state.q_freeze < 1;
+                document.getElementById('qty-freeze').innerText = this.state.q_freeze;
+                document.getElementById('btn-nuke').disabled = this.state.q_nuke < 1;
+                document.getElementById('qty-nuke').innerText = this.state.q_nuke;
+            },
+
+            startBoss() {
+                this.state.boss = true;
+                this.state.bhp = 10;
+                this.state.time = Math.min(this.state.time + 3000, C.MAX_TIME);
+                document.getElementById('boss').classList.add('active');
+                UI.bars(this.state.time, this.state.combo, 10);
+            },
+
+            hitBoss(x, y) {
+                if (!this.state.boss) return;
+                this.state.bhp--;
+                Audio.play(200 + Math.random() * 100, 'square', 0.05);
+                Render.spawn(x, y, '#fff');
+                UI.bars(this.state.time, this.state.combo, this.state.bhp);
+                if (this.state.bhp <= 0) {
+                    this.state.boss = false;
+                    document.getElementById('boss').classList.remove('active');
+                    this.state.score += 5;
+                    this.state.q_freeze++;
+                    if (this.state.lvl > 10) this.state.q_nuke++;
+                    this.renderPowerups();
+                    UI.update();
+                    this.round();
+                }
+            },
+
+            over() {
+                this.state.active = false;
+                document.body.style.filter = 'none';
+                Render.zoom = 1;
+
+                if (this.state.mode === 'NORMAL') {
+                    this.lb.push(this.state.score);
+                    this.lb.sort((a, b) => b - a);
+                    this.lb = this.lb.slice(0, 3);
+                    localStorage.setItem('lb', JSON.stringify(this.lb));
+                }
+                document.getElementById('end-score').innerText = this.state.score;
+                UI.show('s-over');
+                this.updateLB();
+            },
+
+            updateLB() {
+                document.getElementById('lb-list').innerHTML = this.lb.map((s, i) => `<div>#${i + 1} ..... ${s}</div>`).join('');
+            }
+        };
+
+        /** UI */
+        const UI = {
+            els: {},
+            init() {
+                this.els.score = document.getElementById('ui-score');
+                this.els.lvl = document.getElementById('ui-lvl');
+                this.els.rank = document.getElementById('rank-badge');
+                this.els.timer = document.getElementById('timer-fill');
+                this.els.combo = document.getElementById('combo-fill');
+                this.els.boss = document.getElementById('boss-hp-fill');
+            },
+            show(id) {
+                document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+                document.getElementById(id).classList.add('active');
+            },
+            update() {
+                this.els.score.innerText = Game.state.score;
+                this.els.lvl.innerText = Game.state.lvl;
+                const r = Game.state.score; let t = "NOVICE";
+                if (r > 20) t = "HACKER"; if (r > 50) t = "CYBORG"; if (r > 100) t = "ARCHITECT";
+                this.els.rank.innerText = "RANK: " + t;
+            },
+            bars(t, c, b) {
+                if (this.els.timer) this.els.timer.style.width = (t / C.MAX_TIME * 100) + '%';
+                if (this.els.combo) this.els.combo.style.width = c + '%';
+                if (this.els.boss) this.els.boss.style.width = (b / 10 * 100) + '%';
+            }
+        };
+
+        window.onload = () => Game.init();
+    </script>
+</body>
+
+</html>
